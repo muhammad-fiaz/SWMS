@@ -18,10 +18,12 @@ License: MIT License
 import json
 import sys
 import os
+from time import sleep
 
 from tqdm import tqdm
 
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TRANSFORMERS_NO_TQDM"] = "1"
 import glob
 import argparse
 import pandas as pd
@@ -185,6 +187,37 @@ def load_classifier():
 
     print("✅ Model and label2idx loaded successfully.")
     return model, label2idx, {v: k for k, v in label2idx.items()}
+
+
+# ===== Custom Progress bar =====
+def load_model_with_progress():
+    """
+    Downloads the YOLOS model and processor from HuggingFace with bottom-fixed tqdm.
+    """
+    print("⬇️ Downloading YOLOS model and processor from HuggingFace...")
+
+    bar = tqdm(
+        total=2,
+        desc="📦 Model Loading",
+        unit="task",
+        position=1,
+        leave=True,
+        file=sys.stdout,
+    )
+
+    # Downloading YOLOS model
+    yolo_model = YolosForObjectDetection.from_pretrained("hustvl/yolos-base")
+    bar.update(1)
+    sleep(0.3)  # Sleep to simulate the download time
+
+    # Downloading YOLOS processor
+    processor = YolosImageProcessor.from_pretrained("hustvl/yolos-base")
+    bar.update(1)
+    bar.close()
+
+    print("\n✅ Model and Processor downloaded and loaded successfully!")
+
+    return yolo_model, processor
 
 
 # ===== YOLO Analysis with multiple item breakdown =====
@@ -387,10 +420,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    print("⬇️ Downloading YOLOS model and processor from HuggingFace...")
-    yolo_model = YolosForObjectDetection.from_pretrained("hustvl/yolos-base")
-    processor = YolosImageProcessor.from_pretrained("hustvl/yolos-base")
-    print("✅  model downloaded and loaded successfully!")
+    yolo_model, processor = load_model_with_progress()
 
     if args.train:
         load_and_train_model()
