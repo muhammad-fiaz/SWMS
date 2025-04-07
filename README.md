@@ -44,19 +44,19 @@ pip install .
 Place your CSV files in `Datasets/` (e.g. `Datasets/data1.csv`), then:
 
 ```bash
-python main.py --train
+python detect.py --train
 ```
 
 ### 🖼️ Analyze an image via GUI
 
 ```bash
-python main.py --gui
+python detect.py --gui
 ```
 
 ### 🖼️ Analyze an image via command-line
 
 ```bash
-python main.py --image path/to/image.jpg
+python detect.py --image path/to/image.jpg
 ```
 
 ---
