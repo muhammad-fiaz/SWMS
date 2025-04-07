@@ -1,4 +1,9 @@
-# ♻️ Smart Waste Management System (SWMS)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4a7266a0-105d-4555-8b6c-1462c03608de" alt="preview">
+</p>
+
+<h1 align="center">♻️ Smart Waste Management System (SWMS)</h1>
+
 
 An intelligent system to detect, classify, and analyze waste using AI-powered object detection and material composition prediction. This project combines YOLOS object detection with a custom-trained classifier to identify and categorize waste as degradable or non-degradable.
 
