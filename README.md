@@ -79,6 +79,23 @@ bottle,100,0,0
 
 ---
 
+## 📸 Project Structure
+
+```text
+assets/
+    └── logo.png    # Logo
+datasets/           # Dataset folder
+    └── data1.csv   # dataset example 1
+    └── data2.csv   # dataset example 2
+.gitignore          # Git ignore file
+detect.py           # main detection script
+LICENSE             # License file
+pyproject.toml      # Project metadata
+README.md           # Project documentation
+uv.lock             # Dependency lock file
+requirements.txt    # Python dependencies
+```
+
 ## 📊 Output Report Example
 
 ```
