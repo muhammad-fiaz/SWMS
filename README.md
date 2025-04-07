@@ -62,8 +62,8 @@ CSV files should be like:
 
 ```csv
 label,plastic,metal,glass
-bottle,80,10,10
-can,10,85,5
+phone,42,38,20
+bottle,100,0,0
 ```
 
 - `label`: The item name (must match YOLOS labels for detection).
@@ -82,18 +82,18 @@ can,10,85,5
 ## 📊 Output Report Example
 
 ```
-Detected Items in sample.jpg:
-- bottle
-- can
+Detected Items 1 in image.jpg:
+- cell phone
 
 Estimated Recyclable Components:
-Plastic: 45%
-Metal: 50%
-Glass: 5%
+Plastic: 42%
+Metal: 38%
+Glass: 20%
 
 ♻️ Waste Classification:
-Degradable Waste: 0%
-Non-Degradable Waste: 100% ❌
+✅ Degradable Waste: 0% 
+❗ Non-Degradable Waste: 100%
+----------------------------------------
 ```
 
 ---

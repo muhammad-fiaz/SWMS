@@ -1,3 +1,20 @@
+"""
+Recycling Waste Management System
+
+Modes:
+1. --train       : Trains the classification model using Datasets/*.csv
+2. --gui         : Launches the PyQt6 GUI for drag-and-drop image analysis
+3. --image PATH  : Analyzes a single image via command line
+
+This tool detects objects in an image using a YOLOS model and predicts
+their recyclable material composition (plastic, metal, glass) using a
+custom-trained PyTorch model saved as `model.safetensors`.
+
+Author: Muhammad Fiaz
+Date: 2025-04-07
+License: MIT License
+"""
+
 import json
 import sys
 import os
@@ -19,7 +36,21 @@ from transformers import YolosImageProcessor, YolosForObjectDetection
 
 
 # ===== Dataset + Model Setup =====
+
 class RecyclingDataset(Dataset):
+    """
+    Dataset for converting labeled CSV entries into tensors.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing 'label' and material columns.
+
+    Attributes:
+        labels (List[str]): List of item labels.
+        data (np.ndarray): Feature values (plastic, metal, glass).
+        label2idx (Dict[str, int]): Label to index mapping.
+        idx2label (Dict[int, str]): Index to label mapping.
+        encoded_labels (List[int]): Encoded labels as integers.
+    """
     def __init__(self, df):
         self.labels = df['label'].astype(str).tolist()
         self.data = df.drop(columns=['label']).values.astype(float)
@@ -35,6 +66,16 @@ class RecyclingDataset(Dataset):
 
 
 class ComponentPredictor(nn.Module):
+    """
+    PyTorch model to predict component breakdown using label embedding.
+
+    Args:
+        num_classes (int): Number of unique item classes.
+
+    Structure:
+        - Embedding Layer
+        - Fully connected layers to output plastic, metal, and glass scores.
+    """
     def __init__(self, num_classes):
         super().__init__()
         self.embedding = nn.Embedding(num_classes, 16)
@@ -50,6 +91,13 @@ class ComponentPredictor(nn.Module):
 
 
 def load_and_train_model():
+    """
+    Loads CSV datasets, trains a model, and saves it along with label mappings.
+
+    Returns:
+        model (ComponentPredictor): Trained model instance.
+        idx2label (Dict[int, str]): Index to label mapping.
+    """
     print("📥 Loading datasets...")
     csv_files = glob.glob("Datasets/*.csv")
     if not csv_files:
@@ -76,7 +124,6 @@ def load_and_train_model():
     tensor_dict = {k: v for k, v in model.state_dict().items() if isinstance(v, torch.Tensor)}
     save_file(tensor_dict, "model.safetensors")
 
-    # ✅ Save label2idx to JSON
     with open("label2idx.json", "w+") as f:
         json.dump(dataset.label2idx, f)
 
@@ -84,8 +131,15 @@ def load_and_train_model():
     return model, {v: k for k, v in dataset.label2idx.items()}
 
 
-
 def load_classifier():
+    """
+    Loads model and label mappings from disk.
+
+    Returns:
+        model (ComponentPredictor): Trained PyTorch model.
+        label2idx (Dict[str, int]): Mapping from label to index.
+        idx2label (Dict[int, str]): Reverse mapping from index to label.
+    """
     print("📦 Loading model and label mappings...")
 
     if not os.path.exists("model.safetensors") or not os.path.exists("label2idx.json"):
@@ -104,11 +158,20 @@ def load_classifier():
     return model, label2idx, {v: k for k, v in label2idx.items()}
 
 
-
-
-
 # ===== YOLO Analysis with multiple item breakdown =====
+
 def analyze_with_yolo(image_path, model, label2idx):
+    """
+    Analyze image and detect recyclable components for each item.
+
+    Args:
+        image_path (str): Path to image file.
+        model (nn.Module): Trained model.
+        label2idx (Dict[str, int]): Mapping of label to index.
+
+    Returns:
+        str: Generated report of object predictions and material estimates.
+    """
     print(f"🔍 Analyzing image: {image_path}")
     image = Image.open(image_path).convert("RGB")
     inputs = processor(images=image, return_tensors="pt")
@@ -161,7 +224,15 @@ def analyze_with_yolo(image_path, model, label2idx):
 
 
 # ===== GUI Setup =====
+
 class ImageAnalyzer(QWidget):
+    """
+    PyQt6 GUI application to upload and analyze waste images.
+
+    Args:
+        model (nn.Module): Trained classification model.
+        label2idx (dict): Label-to-index mapping.
+    """
     def __init__(self, model, label2idx):
         super().__init__()
         self.model = model
@@ -177,9 +248,8 @@ class ImageAnalyzer(QWidget):
         self.init_upload_view()
 
     def init_upload_view(self):
-        print("🟢 UI Ready: Upload view displayed.")
+        """Sets up the UI view for uploading an image."""
         self.clear_layout()
-
         title = QLabel("📤 Upload an Image")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size: 20px; font-weight: bold; margin: 10px;")
@@ -197,10 +267,12 @@ class ImageAnalyzer(QWidget):
         self.main_layout.addWidget(self.button)
 
     def dragEnterEvent(self, event):
+        """Enables drag-and-drop support for images."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event):
+        """Handles dropped image and performs analysis."""
         urls = event.mimeData().urls()
         if urls:
             file_path = urls[0].toLocalFile()
@@ -210,7 +282,7 @@ class ImageAnalyzer(QWidget):
                 self.show_result_view(file_path, report)
 
     def show_result_view(self, image_path, report):
-        print("✅ Displaying results view.")
+        """Displays the image and analysis result in a new view."""
         self.clear_layout()
 
         title = QLabel("📷 Image Preview")
@@ -241,6 +313,7 @@ class ImageAnalyzer(QWidget):
         self.main_layout.addWidget(self.try_again_button)
 
     def upload_image(self):
+        """Opens file dialog to upload an image for analysis."""
         file_name, _ = QFileDialog.getOpenFileName()
         if file_name:
             print(f"📂 Selected image: {file_name}")
@@ -248,6 +321,7 @@ class ImageAnalyzer(QWidget):
             self.show_result_view(file_name, report)
 
     def clear_layout(self):
+        """Clears all widgets from the current layout."""
         while self.main_layout.count():
             child = self.main_layout.takeAt(0)
             if child.widget():
@@ -255,7 +329,15 @@ class ImageAnalyzer(QWidget):
 
 
 # ===== CLI Entry Point =====
+
 if __name__ == '__main__':
+    """
+    Command-line entry point.
+    Supports:
+        --train       Trains a new model from CSVs
+        --gui         Launches the GUI interface
+        --image PATH  Runs analysis on a single image and prints result
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--train", action="store_true", help="Train model from Datasets/*.csv")
     parser.add_argument("--gui", action="store_true", help="Launch PyQt6 GUI")
@@ -291,6 +373,7 @@ if __name__ == '__main__':
             sys.exit(app.exec())
         finally:
             print("🛑 Application closed.")
+
     elif args.image:
         if not os.path.exists("model.safetensors"):
             print("❌ Model not found. Please run with --train first.")
