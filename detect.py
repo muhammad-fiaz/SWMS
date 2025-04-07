@@ -19,6 +19,8 @@ import json
 import sys
 import os
 
+from tqdm import tqdm
+
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import glob
 import argparse
@@ -125,6 +127,10 @@ def load_and_train_model():
     loss_fn = nn.MSELoss()
 
     print("🔁 Training started...")
+    # Total steps = epochs × batches per epoch
+    total_steps = 100 * len(dataloader)
+    progress = tqdm(total=total_steps, desc="🧠 Training Progress", unit="step")
+
     for epoch in range(100):
         for labels, targets in dataloader:
             preds = model(labels)
@@ -132,6 +138,11 @@ def load_and_train_model():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+            progress.set_postfix(epoch=epoch + 1, loss=loss.item())
+            progress.update(1)
+
+    progress.close()
 
     tensor_dict = {
         k: v for k, v in model.state_dict().items() if isinstance(v, torch.Tensor)
@@ -141,7 +152,11 @@ def load_and_train_model():
     with open("label2idx.json", "w+") as f:
         json.dump(dataset.label2idx, f)
 
-    print("✅ Training complete. Model saved as model.safetensors.")
+    print(
+        "✅ Training complete. Model saved as model.safetensors."
+        "\n✅ Label mappings saved as label2idx.json."
+        "\n🚀 You can now use the --gui or --image options to analyze images."
+    )
     return model, {v: k for k, v in dataset.label2idx.items()}
 
 
@@ -351,11 +366,15 @@ class ImageAnalyzer(QWidget):
 
 if __name__ == "__main__":
     """
-    Command-line entry point.
-    Supports:
-        --train       Trains a new model from CSVs
-        --gui         Launches the GUI interface
-        --image PATH  Runs analysis on a single image and prints result
+   Main entry point for the Recycling Waste Management System.
+
+    Supports the following command-line options:
+    --train       : Trains the classification model from Datasets/*.csv files
+    --gui         : Launches the drag-and-drop PyQt6 GUI for image analysis
+    --image PATH  : Analyzes a single image file and outputs the report
+
+    Automatically loads YOLOS model and processor from HuggingFace on startup.
+    Ensures model.safetensors exists before GUI or image analysis is run.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -368,8 +387,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    print("⬇️ Downloading YOLOS model and processor from HuggingFace...")
     yolo_model = YolosForObjectDetection.from_pretrained("hustvl/yolos-base")
     processor = YolosImageProcessor.from_pretrained("hustvl/yolos-base")
+    print("✅  model downloaded and loaded successfully!")
 
     if args.train:
         load_and_train_model()
