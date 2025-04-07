@@ -88,7 +88,7 @@ bottle,100,0,0
 
 ```text
 assets/
-    └── logo.png    # Logo
+    └── logo.png    # Logo image
 datasets/           # Dataset folder
     └── data1.csv   # dataset example 1
     └── data2.csv   # dataset example 2
@@ -99,6 +99,8 @@ pyproject.toml      # Project metadata
 README.md           # Project documentation
 uv.lock             # Dependency lock file
 requirements.txt    # Python dependencies
+label2idx.json      # Encoded label mappings (used by the model)
+model.safetensors   # Trained model weights
 ```
 
 ## 📊 Output Report Example

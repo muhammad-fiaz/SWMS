@@ -18,7 +18,8 @@ License: MIT License
 import json
 import sys
 import os
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import glob
 import argparse
 import pandas as pd
@@ -27,7 +28,13 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from safetensors.torch import save_file, load_file
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog, QTextEdit
+    QApplication,
+    QWidget,
+    QLabel,
+    QVBoxLayout,
+    QPushButton,
+    QFileDialog,
+    QTextEdit,
 )
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import Qt, QSize
@@ -36,6 +43,7 @@ from transformers import YolosImageProcessor, YolosForObjectDetection
 
 
 # ===== Dataset + Model Setup =====
+
 
 class RecyclingDataset(Dataset):
     """
@@ -51,9 +59,10 @@ class RecyclingDataset(Dataset):
         idx2label (Dict[int, str]): Index to label mapping.
         encoded_labels (List[int]): Encoded labels as integers.
     """
+
     def __init__(self, df):
-        self.labels = df['label'].astype(str).tolist()
-        self.data = df.drop(columns=['label']).values.astype(float)
+        self.labels = df["label"].astype(str).tolist()
+        self.data = df.drop(columns=["label"]).values.astype(float)
         self.label2idx = {label: idx for idx, label in enumerate(set(self.labels))}
         self.idx2label = {idx: label for label, idx in self.label2idx.items()}
         self.encoded_labels = [self.label2idx[lbl] for lbl in self.labels]
@@ -62,7 +71,9 @@ class RecyclingDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        return torch.tensor(self.encoded_labels[idx]), torch.tensor(self.data[idx], dtype=torch.float)
+        return torch.tensor(self.encoded_labels[idx]), torch.tensor(
+            self.data[idx], dtype=torch.float
+        )
 
 
 class ComponentPredictor(nn.Module):
@@ -76,6 +87,7 @@ class ComponentPredictor(nn.Module):
         - Embedding Layer
         - Fully connected layers to output plastic, metal, and glass scores.
     """
+
     def __init__(self, num_classes):
         super().__init__()
         self.embedding = nn.Embedding(num_classes, 16)
@@ -121,7 +133,9 @@ def load_and_train_model():
             loss.backward()
             optimizer.step()
 
-    tensor_dict = {k: v for k, v in model.state_dict().items() if isinstance(v, torch.Tensor)}
+    tensor_dict = {
+        k: v for k, v in model.state_dict().items() if isinstance(v, torch.Tensor)
+    }
     save_file(tensor_dict, "model.safetensors")
 
     with open("label2idx.json", "w+") as f:
@@ -159,6 +173,7 @@ def load_classifier():
 
 
 # ===== YOLO Analysis with multiple item breakdown =====
+
 
 def analyze_with_yolo(image_path, model, label2idx):
     """
@@ -225,6 +240,7 @@ def analyze_with_yolo(image_path, model, label2idx):
 
 # ===== GUI Setup =====
 
+
 class ImageAnalyzer(QWidget):
     """
     PyQt6 GUI application to upload and analyze waste images.
@@ -233,6 +249,7 @@ class ImageAnalyzer(QWidget):
         model (nn.Module): Trained classification model.
         label2idx (dict): Label-to-index mapping.
     """
+
     def __init__(self, model, label2idx):
         super().__init__()
         self.model = model
@@ -276,7 +293,7 @@ class ImageAnalyzer(QWidget):
         urls = event.mimeData().urls()
         if urls:
             file_path = urls[0].toLocalFile()
-            if file_path.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if file_path.lower().endswith((".png", ".jpg", ".jpeg")):
                 print(f"📥 Dropped image: {file_path}")
                 report = analyze_with_yolo(file_path, self.model, self.label2idx)
                 self.show_result_view(file_path, report)
@@ -290,7 +307,9 @@ class ImageAnalyzer(QWidget):
         title.setStyleSheet("font-size: 18px; font-weight: bold; margin: 10px;")
         self.main_layout.addWidget(title)
 
-        image = QPixmap(image_path).scaledToHeight(400, Qt.TransformationMode.SmoothTransformation)
+        image = QPixmap(image_path).scaledToHeight(
+            400, Qt.TransformationMode.SmoothTransformation
+        )
         self.image_label = QLabel()
         self.image_label.setPixmap(image)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -330,7 +349,7 @@ class ImageAnalyzer(QWidget):
 
 # ===== CLI Entry Point =====
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """
     Command-line entry point.
     Supports:
@@ -339,14 +358,18 @@ if __name__ == '__main__':
         --image PATH  Runs analysis on a single image and prints result
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--train", action="store_true", help="Train model from Datasets/*.csv")
+    parser.add_argument(
+        "--train", action="store_true", help="Train model from Datasets/*.csv"
+    )
     parser.add_argument("--gui", action="store_true", help="Launch PyQt6 GUI")
-    parser.add_argument("--image", type=str, help="Analyze single image and print result")
+    parser.add_argument(
+        "--image", type=str, help="Analyze single image and print result"
+    )
 
     args = parser.parse_args()
 
-    yolo_model = YolosForObjectDetection.from_pretrained('hustvl/yolos-base')
-    processor = YolosImageProcessor.from_pretrained('hustvl/yolos-base')
+    yolo_model = YolosForObjectDetection.from_pretrained("hustvl/yolos-base")
+    processor = YolosImageProcessor.from_pretrained("hustvl/yolos-base")
 
     if args.train:
         load_and_train_model()
@@ -356,8 +379,11 @@ if __name__ == '__main__':
             from PyQt6.QtWidgets import QMessageBox
 
             QApplication(sys.argv)
-            QMessageBox.critical(None, "Model Not Found",
-                                 "❌ model.safetensors not found.\nPlease run with --train first.")
+            QMessageBox.critical(
+                None,
+                "Model Not Found",
+                "❌ model.safetensors not found.\nPlease run with --train first.",
+            )
             sys.exit()
         trained_model, label2idx, _ = load_classifier()
         app = QApplication(sys.argv)
