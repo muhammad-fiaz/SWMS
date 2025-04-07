@@ -1,3 +1,4 @@
+import json
 import sys
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -11,8 +12,8 @@ from safetensors.torch import save_file, load_file
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog, QTextEdit
 )
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap, QIcon
+from PyQt6.QtCore import Qt, QSize
 from PIL import Image
 from transformers import YolosImageProcessor, YolosForObjectDetection
 
@@ -74,32 +75,36 @@ def load_and_train_model():
 
     tensor_dict = {k: v for k, v in model.state_dict().items() if isinstance(v, torch.Tensor)}
     save_file(tensor_dict, "model.safetensors")
+
+    # ✅ Save label2idx to JSON
+    with open("label2idx.json", "w+") as f:
+        json.dump(dataset.label2idx, f)
+
     print("✅ Training complete. Model saved as model.safetensors.")
     return model, {v: k for k, v in dataset.label2idx.items()}
 
 
+
 def load_classifier():
     print("📦 Loading model and label mappings...")
-    csv_files = glob.glob("Datasets/*.csv")
-    if not csv_files:
-        print("❌ No datasets available to infer label2idx.")
+
+    if not os.path.exists("model.safetensors") or not os.path.exists("label2idx.json"):
+        print("❌ Required files not found. Please run with --train first.")
         sys.exit()
 
-    df_all = pd.concat([pd.read_csv(f) for f in csv_files])
-    dataset = RecyclingDataset(df_all)
-    label2idx = dataset.label2idx
+    with open("label2idx.json", "r") as f:
+        label2idx = json.load(f)
 
     model = ComponentPredictor(len(label2idx))
-
-    if not os.path.exists("model.safetensors"):
-        print("❌ model.safetensors not found. Please run with --train to generate it.")
-        sys.exit()
-
     state = load_file("model.safetensors")
     model.load_state_dict(state)
     model.eval()
-    print("✅ Model loaded successfully.")
+
+    print("✅ Model and label2idx loaded successfully.")
     return model, label2idx, {v: k for k, v in label2idx.items()}
+
+
+
 
 
 # ===== YOLO Analysis with multiple item breakdown =====
@@ -145,8 +150,8 @@ def analyze_with_yolo(image_path, model, label2idx):
             degradable_pct = 100 - non_degradable_pct if total > 0 else 0
 
             report += "\n♻️ Waste Classification:\n"
-            report += f"✅Degradable Waste: {degradable_pct}% \n"
-            report += f"❗Non-Degradable Waste: {non_degradable_pct}%"
+            report += f"✅ Degradable Waste: {degradable_pct}% \n"
+            report += f"❗ Non-Degradable Waste: {non_degradable_pct}%"
         else:
             report += f"\n⚠️ Unrecognized Item: {item} (not in model.safetensors)"
 
@@ -161,7 +166,8 @@ class ImageAnalyzer(QWidget):
         super().__init__()
         self.model = model
         self.label2idx = label2idx
-        self.setWindowTitle("♻️ Recycling Waste Analyzer")
+        self.setWindowIcon(QIcon("assets/logo.png"))
+        self.setWindowTitle("Recycling Waste Analyzer")
         self.resize(600, 800)
         self.setAcceptDrops(True)
 
@@ -265,14 +271,26 @@ if __name__ == '__main__':
 
     elif args.gui:
         if not os.path.exists("model.safetensors"):
-            print("❌ Model not found. Please run with --train first.")
+            from PyQt6.QtWidgets import QMessageBox
+
+            QApplication(sys.argv)
+            QMessageBox.critical(None, "Model Not Found",
+                                 "❌ model.safetensors not found.\nPlease run with --train first.")
             sys.exit()
         trained_model, label2idx, _ = load_classifier()
         app = QApplication(sys.argv)
+        app.setWindowIcon(QIcon("assets/logo.png"))
+        icon = QIcon()
+        icon.addFile("assets/logo.png", QSize(16, 16))
+        icon.addFile("assets/logo.png", QSize(32, 32))
+        icon.addFile("assets/logo.png", QSize(64, 64))
+        app.setWindowIcon(icon)
         window = ImageAnalyzer(trained_model, label2idx)
         window.show()
-        sys.exit(app.exec())
-
+        try:
+            sys.exit(app.exec())
+        finally:
+            print("🛑 Application closed.")
     elif args.image:
         if not os.path.exists("model.safetensors"):
             print("❌ Model not found. Please run with --train first.")
