@@ -61,7 +61,7 @@ python main.py --image path/to/image.jpg
 
 ---
 
-## 📁 Dataset Format
+## 📁 Dataset Format for Training
 
 CSV files should be like:
 
