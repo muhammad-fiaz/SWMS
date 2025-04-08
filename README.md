@@ -71,7 +71,7 @@ phone,42,38,20
 bottle,100,0,0
 ```
 
-- `label`: The item name (must match YOLOS labels for detection).
+- `label`: The item name (must match YOLOS labels; you can list them by running `python detection_items.py`)
 - `plastic`, `metal`, `glass`: Composition percentages (should sum to ~100).
 
 ---
